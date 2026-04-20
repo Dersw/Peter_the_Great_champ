@@ -64,7 +64,7 @@ def interactive_loop(tts_instance, speaker: str = "xenia") -> None:
             logger.info(" Синтез...")
             try:
                 audio = tts_instance.synthesize(
-                    text=user_input, speaker=current_speaker, put_accent=True, put_yo=False
+                    text=user_input.lower().replace("я", "йа") + "...", speaker=current_speaker, put_accent=True, put_yo=False
                 )
                 latency = time.time() - start
                 logger.info(f"Воспроизведение заняло: {latency:.3f}с)...")
