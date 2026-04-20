@@ -5,24 +5,41 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import config
-from cli import select_speaker
-from stt.recognizer import STTEngine
-from tts.synthesizer import TTSEngine
+from utils.logger import log
+from cli import show_main_menu, start_user_mode, login_user
+from admin_cli import login_admin, admin_panel
 
 def main():
-    config.TTS_SPEAKER = select_speaker()
-    print(f"✅ Выбран голос: {config.TTS_SPEAKER}")
-
-    print("\n⏳ Запуск контроллера...")
-    tts = TTSEngine()
-    
-    def on_command(command):
-        print(f"Команда: {command.lower()}")
-        tts.speak(config.TTS_PHRASES.get(command, "Команда принята."))
-
-    stt = STTEngine(on_command)
-    stt.start()
+    log.info("запуск программы")
+    while True:
+        choice = show_main_menu()
+        if choice == '0':
+            log.info("Завершение работы")
+            break  
+        elif choice == '1':
+            if login_user():
+                start_user_mode()
+                break
+            else:
+                print("\nВозврат в меню...")
+                continue
+        elif choice == '2':
+            if login_admin():
+                admin_panel()
+                print("\nПерезапустите систему для применения изменений")
+            else:
+                print("\nВозврат в меню...")
+                continue
+        else:
+            print("Неверный ввод, попробуйте снова")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        log.info("Работа прервана пользователем")
+        print("\nОстановка...")
+    except Exception as e:
+        log.exception(f"Критическая ошибка: {e}")
+        print(f"Ошибка: {e}")
+        sys.exit(1)
