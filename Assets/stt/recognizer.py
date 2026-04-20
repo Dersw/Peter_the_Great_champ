@@ -4,6 +4,7 @@ import numpy as np
 import sounddevice as sd
 from vosk import Model, KaldiRecognizer
 import config
+from utils.logger import log
 
 class STTEngine:
     def __init__(self, on_command):
@@ -18,6 +19,8 @@ class STTEngine:
         self.last_partial = ""
         self._last_cmd = ""
         self._last_cmd_time = 0
+
+        log.info(f"STT модуль инициализирован. Команд загружено: {len(config.COMMANDS)}")
 
     def _audio_callback(self, indata, frames, time_info, status):
         audio_chunk = indata[:, 0]
@@ -35,7 +38,9 @@ class STTEngine:
         if self.recognizer.AcceptWaveform(audio_int16.tobytes()):
             result = json.loads(self.recognizer.Result())
             text = result.get("text", "").strip()
-            if text: self._check(text)
+            if text:
+                log.info(f"Финальное распознавание: '{text}'")
+                self._check(text)
         else:
             partial = json.loads(self.recognizer.PartialResult())
             partial_text = partial.get("partial", "").strip()
@@ -43,13 +48,15 @@ class STTEngine:
                 self.last_partial = partial_text
                 for cmd_word in config.COMMANDS:
                     if cmd_word in partial_text.lower():
+                        log.cmd(f"Ранний тригер: '{partial_text}' -> {config.COMMANDS[cmd_word]}")
                         self._trigger(config.COMMANDS[cmd_word])
 
         if not is_speech and self.speech_frames > 0:
             if (self.silence_frames * 30 / 1000) > config.COMMAND_TIMEOUT:
                 result = json.loads(self.recognizer.FinalResult())
                 text = result.get("text", "").strip()
-                if text: self._check(text)
+                if text:
+                    self._check(text)
                 self.speech_frames = 0
                 self.silence_frames = 0
                 self.last_partial = ""
@@ -58,6 +65,7 @@ class STTEngine:
     def _check(self, text):
         for key, cmd in config.COMMANDS.items():
             if key in text.lower():
+                log.cmd(f"Команда потверждена: '{key}' -> {cmd}")
                 self._trigger(cmd)
                 return
 
@@ -79,7 +87,9 @@ class STTEngine:
         )
         self.stream.start()
         try:
-            while True: time.sleep(0.1)
+            while True:
+                time.sleep(0.1)
         except KeyboardInterrupt:
+            log.info("STT поток остановлен пользователем")
             self.stream.stop()
             self.stream.close()
